@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 400px;
+        }
+        #image-container {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        #image, #converted-image {
+            max-width: 100%;
+            height: auto;
+            display: none;
+            margin-top: 20px;
+        }
+        #converted-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        #options {
+            margin: 20px;
+            text-align: left;
+        }
+        #buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+<div id="container">
+    <h1>Image Converter</h1>
+    <input type="file" id="upload" accept="image/*"><br>
+    <div id="options">
+        <label><input type="checkbox" value="rotate"> 회전</label><br>
+        <label><input type="checkbox" value="resize"> 사이즈 조정(자르기)</label><br>
+        <label><input type="checkbox" value="saturation"> 채도 변경</label><br>
+        <label><input type="checkbox" value="brightness"> 밝기 변경</label><br>
+        <label><input type="checkbox" value="skew"> 기울기</label>
+    </div>
+    <div id="buttons">
+        <button id="convert" disabled>Convert</button>
+        <button id="random" disabled>Random</button>
+        <button id="compare" disabled>Compare</button>
+    </div>
+    <div id="image-container">
+        <img id="image" src="" alt="Uploaded Image">
+        <img id="converted-image" src="" alt="Converted Image">
+    </div>
+    <button id="save" style="display:none;">Save Converted Image</button>
+    <canvas id="canvas" style="display:none;"></canvas>
+</div>
+
+<script>
+    document.getElementById('upload').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('image').src = e.target.result;
+                document.getElementById('image').style.display = 'block';
+                document.getElementById('convert').disabled = false;
+                document.getElementById('random').disabled = false;
+                document.getElementById('compare').disabled = false;
+                document.getElementById('convert').classList.add('enabled');
+                document.getElementById('random').classList.add('enabled');
+                document.getElementById('compare').classList.add('enabled');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    function applyTransformations(ctx, canvas, image, options) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0);
+
+        options.forEach(option => {
+            switch (option.value) {
+                case 'rotate': {
+                    const angle = Math.random() * 10 - 2;
+                    const radians = angle * Math.PI / 180;
+                    ctx.save();
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    ctx.rotate(radians);
+                    ctx.translate(-canvas.width / 2, -canvas.height / 2);
+                    ctx.drawImage(canvas, 0, 0);
+                    ctx.restore();
+                    break;
+                }
+                case 'resize': {
+                    const scale = 0.8 + Math.random() * 0.2;
+                    const cropWidth = canvas.width * scale;
+                    const cropHeight = canvas.height * scale;
+                    const offsetX = (canvas.width - cropWidth) / 2;
+                    const offsetY = (canvas.height - cropHeight) / 2;
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = cropWidth;
+                    tempCanvas.height = cropHeight;
+                    tempCanvas.getContext('2d').drawImage(canvas, offsetX, offsetY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+                    break;
+                }
+                case 'saturation': {
+                    const saturationValue = 1.4 + Math.random() * 0.8;
+                    ctx.filter = `saturate(${saturationValue})`;
+                    ctx.drawImage(canvas, 0, 0);
+                    ctx.filter = 'none';
+                    break;
+                }
+                case 'brightness': {
+                    const brightnessValue = 1.4 + Math.random() * 0.8;
+                    ctx.filter = `brightness(${brightnessValue})`;
+                    ctx.drawImage(canvas, 0, 0);
+                    ctx.filter = 'none';
+                    break;
+                }
+                case 'skew': {
+                    const skewX = Math.random() * 10 - 5;
+                    const skewY = Math.random() * 10 - 5;
+                    ctx.save();
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    ctx.transform(1, skewY / 100, skewX / 100, 1, 0, 0);
+                    ctx.translate(-canvas.width / 2, -canvas.height / 2);
+                    ctx.drawImage(canvas, 0, 0);
+                    ctx.restore();
+                    break;
+                }
+            }
+        });
+    }
+
+    document.getElementById('convert').addEventListener('click', function() {
+        const image = document.getElementById('image');
+        const canvas = document.getElementById('canvas');
+        if (!canvas || !image) return;
+
+        const ctx = canvas.getContext('2d');
+        const options = document.querySelectorAll('#options input:checked');
+
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+
+        applyTransformations(ctx, canvas, image, options);
+
+        const dataUrl = canvas.toDataURL('image/png');
+        const convertedImage = document.getElementById('converted-image');
+        convertedImage.src = dataUrl;
+        convertedImage.style.display = 'block';
+        document.getElementById('save').style.display = 'block';
+        document.getElementById('compare').style.display = 'block';
+        convertedImage.style.opacity = '1';
+    });
+
+    document.getElementById('random').addEventListener('click', function() {
+        const checkboxes = document.querySelectorAll('#options input');
+        checkboxes.forEach(checkbox => checkbox.checked = false);
+        const randomOptions = Array.from(checkboxes).sort(() => 0.5 - Math.random()).slice(0, 2);
+        randomOptions.forEach(option => option.checked = true);
+        document.getElementById('convert').click();
+    });
+
+    document.getElementById('compare').addEventListener('mousedown', function() {
+        const convertedImage = document.getElementById('converted-image');
+        const originalImage = document.getElementById('image');
+        convertedImage.style.opacity = '0';
+        originalImage.style.opacity = '1';
+    });
+
+    document.getElementById('compare').addEventListener('mouseup', function() {
+        const convertedImage = document.getElementById('converted-image');
+        const originalImage = document.getElementById('image');
+        convertedImage.style.opacity = '1';
+        originalImage.style.opacity = '0';
+    });
+
+    document.getElementById('save').addEventListener('click', function() {
+        const dataUrl = document.getElementById('converted-image').src;
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = 'converted-image.png';
+        link.click();
+    });
+</script>
+</body>
+</html>
